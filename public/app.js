@@ -334,18 +334,23 @@
 
   function fileRow(rec) {
     const p = esc(rec.path);
+    const win = state.platform === 'win32';
+    const parts = String(rec.folder || '').split(/[\\/]+/).filter(Boolean);
+    const root = !win && String(rec.folder || '').startsWith('/') ? '/' : '';
+    const crumbs = parts.map((seg, i) => `<span class="crumb ${i === parts.length - 1 ? 'last' : ''}">${esc(seg)}</span>`)
+      .join('<span class="crumb-sep">›</span>');
     return `
       <div class="file-row" title="${p}">
-        ${ICONS.pdf}
-        <div class="file-path">
+        <div class="file-head">
+          ${ICONS.pdf}
           <div class="file-name">${esc(rec.name)}</div>
-          <div class="file-dir"><bdi>${esc(rec.folder)}</bdi></div>
+          <div class="file-actions">
+            <button class="mini-btn" data-act="view" data-path="${p}" title="Preview PDF">${ICONS.eye}</button>
+            <button class="mini-btn" data-act="reveal" data-path="${p}" title="Show in folder">${ICONS.folder}</button>
+            <button class="mini-btn" data-act="copy" data-path="${p}" title="Copy full path">${ICONS.copy}</button>
+          </div>
         </div>
-        <div class="file-actions">
-          <button class="mini-btn" data-act="view" data-path="${p}" title="Preview PDF">${ICONS.eye}</button>
-          <button class="mini-btn" data-act="reveal" data-path="${p}" title="Show in folder">${ICONS.folder}</button>
-          <button class="mini-btn" data-act="copy" data-path="${p}" title="Copy full path">${ICONS.copy}</button>
-        </div>
+        <div class="file-crumbs" aria-label="Folder path">${root ? '<span class="crumb root">/</span>' : ''}${crumbs}</div>
       </div>`;
   }
 
