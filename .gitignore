@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Extracted PDF data cache (contains personal applicant data — never commit)
+.cache/
+
+# PDFs (applicant documents must never be committed)
+*.pdf
+*.PDF
+
+# Exported reports
+*.csv
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Editor / tooling
+.claude/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temp
+tmp/
+*.tmp

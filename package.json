@@ -1,0 +1,23 @@
+{
+  "name": "old-bdg-finder",
+  "version": "1.0.0",
+  "description": "Scan folders of visa-application PDFs and find applicants that already exist in an older archive.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon --watch server.js --watch lib --ext js server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "express": "^5.1.0",
+    "pdfjs-dist": "^4.10.38"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
