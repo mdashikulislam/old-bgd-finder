@@ -133,22 +133,28 @@
     await loadDir($('#' + target).value || '');
   }
 
-  async function loadDir(p) {
-    const res = await fetch('/api/browse?path=' + encodeURIComponent(p)).then((r) => r.json());
+  async function loadDir(p, drives = false) {
+    const qs = new URLSearchParams({ path: p });
+    if (drives) qs.set('drives', '1');
+    const res = await fetch('/api/browse?' + qs).then((r) => r.json());
     if (res.error) return toast(res.error, 'error');
     $('#browserPathInput').value = res.path;
-    $('#browserUp').disabled = !res.parent;
-    $('#browserUp').onclick = () => res.parent && loadDir(res.parent);
-    $('#browserInfo').textContent = `${res.dirs.length} folders · ${res.pdfCount} PDFs here`;
+    $('#browserPathInput').placeholder = res.label || '';
+    // parent === '' means "go to the drive list" (Windows); null means top of the tree.
+    const hasParent = res.parent !== null && res.parent !== undefined;
+    $('#browserUp').disabled = !hasParent;
+    $('#browserUp').onclick = () => hasParent && loadDir(res.parent, res.parent === '');
+    $('#browserInfo').textContent = res.path === '' ? `${res.dirs.length} drives` : `${res.dirs.length} folders · ${res.pdfCount} PDFs here`;
     $('#browserList').innerHTML = res.dirs.length
-      ? res.dirs.map((d) => `<button class="dir-item" data-dir="${esc(d)}">${ICONS.folder}<span>${esc(d)}</span></button>`).join('')
+      ? res.dirs.map((d) => `<button class="dir-item" data-path="${esc(d.path)}">${ICONS.folder}<span>${esc(d.name)}</span></button>`).join('')
       : '<div class="list-empty">No sub-folders</div>';
     $$('.dir-item', $('#browserList')).forEach((el) => {
-      el.onclick = () => loadDir(res.path + (res.path.endsWith('/') || res.path.endsWith('\\') ? '' : (state.platform === 'win32' ? '\\' : '/')) + el.dataset.dir);
+      el.onclick = () => loadDir(el.dataset.path);
     });
   }
   $('#browserPathInput').addEventListener('keydown', (e) => e.key === 'Enter' && loadDir(e.target.value));
   $('#browserSelect').onclick = () => {
+    if (!$('#browserPathInput').value) return toast('Choose a drive or folder first.', 'error');
     setPath(browserTarget, $('#browserPathInput').value);
     closeModals();
   };

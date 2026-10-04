@@ -15,7 +15,7 @@ The app opens at http://localhost:4321.
 
 ## How it works
 
-1. **Browse** opens your system's folder picker (Finder, Explorer or zenity). You can also paste a path.
+1. **Browse** opens your system's folder picker (Finder, Explorer, zenity or kdialog). If none is available, a built-in folder browser opens instead. You can also paste a path, including one copied with quotes from Explorer or dragged from a terminal; `~` means your home folder.
 2. **Compare** reads every PDF in both folders and extracts: passport no., NID / birth reg. no., given name, surname, date of birth, father's name, mother's name, mobile, email and application ID.
 3. Each new applicant is checked against the old archive using the one rule you select (Passport No. by default):
 
