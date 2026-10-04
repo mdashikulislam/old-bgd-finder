@@ -17,15 +17,16 @@ The app opens at http://localhost:4321.
 
 1. **Browse** opens your system's folder picker (Finder, Explorer or zenity). You can also paste a path.
 2. **Compare** reads every PDF in both folders and extracts: passport no., NID / birth reg. no., given name, surname, date of birth, father's name, mother's name, mobile, email and application ID.
-3. Each new applicant is checked against the old archive using the rules you turn on:
+3. Each new applicant is checked against the old archive using the one rule you select (Passport No. by default):
 
-| Rule                  | Confidence |
-|-----------------------|-----------:|
-| Passport No.          | 100%       |
-| NID / Birth Reg.      | 100%       |
-| Name + Date of Birth  | 85%        |
-| Name + Father's name  | 75%        |
-| Name only (off by default) | 40%   |
+| Rule             | Confidence |
+|------------------|-----------:|
+| Passport No.     | 100%       |
+| NID / Birth Reg. | 100%       |
+| Email            | 90%        |
+| Phone            | 85%        |
+| Given Name       | 50%        |
+| Surname          | 40%        |
 
 Name matching ignores word order and prefixes such as MD / MST / MOHAMMAD.
 
@@ -33,7 +34,7 @@ Name matching ignores word order and prefixes such as MD / MST / MOHAMMAD.
 
 ## Search PDFs
 
-The **Search PDFs** tab looks up one or more values in any folder (sub-folders included). Type a passport no., NID, name, mobile, application ID, date of birth or email. Separate several values with commas. "Look in" limits the search to one field, or leave it on **Any field**. Each matching PDF shows all of its extracted data with the matching values highlighted, plus its file location. Values that weren't found in any PDF are listed in red.
+The **Search PDFs** tab looks up one or more values in any folder (sub-folders included). Type a passport no., NID, given name, surname, email, phone or application ID. Separate several values with commas. "Look in" limits the search to one field, or leave it on **Any field**. Each matching PDF shows all of its extracted data with the matching values highlighted, plus its file location. Values that weren't found in any PDF are listed in red.
 
 ## Notes
 

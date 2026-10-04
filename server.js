@@ -111,7 +111,7 @@ app.get('/api/compare', async (req, res) => {
   try {
     const newPath = path.resolve(expandHome(String(req.query.newPath || '').trim()));
     const oldPath = path.resolve(expandHome(String(req.query.oldPath || '').trim()));
-    const rules = String(req.query.rules || 'passport,nid,nameDob,nameFather').split(',');
+    const rules = String(req.query.rules || 'passport').split(',');
     if (!req.query.newPath || !req.query.oldPath) throw new Error('Please choose both folders.');
     await assertDir(newPath);
     await assertDir(oldPath);
@@ -195,7 +195,7 @@ app.get('/api/search', async (req, res) => {
 
   try {
     const dir = path.resolve(expandHome(String(req.query.path || '').trim()));
-    const field = SEARCH_FIELDS[req.query.field] ? String(req.query.field) : 'any';
+    const field = SEARCH_FIELDS[req.query.field] ? String(req.query.field) : 'passport';
     const queries = parseQueries(req.query.q || '');
     if (!req.query.path) throw new Error('Please choose a folder to search.');
     if (!queries.length) throw new Error('Please type something to search for.');

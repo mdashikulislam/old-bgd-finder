@@ -25,7 +25,7 @@
 
   const state = {
     rules: [],
-    enabledRules: store.get('rules', ['passport', 'nid', 'nameDob', 'nameFather']),
+    enabledRules: store.get('rules', ['passport']),
     data: null,
     tab: 'matched',
     query: '',
@@ -70,6 +70,14 @@
     state.platform = info.platform;
     state.rules = info.rules;
     state.searchFields = info.searchFields;
+    if (!state.enabledRules.some((k) => state.rules.some((r) => r.key === k))) {
+      state.enabledRules = ['passport'];
+      store.set('rules', state.enabledRules);
+    }
+    if (!state.searchFields.some((f) => f.key === state.searchField)) {
+      state.searchField = 'passport';
+      store.set('searchField', state.searchField);
+    }
     renderRuleChips();
     renderFieldChips();
   });
@@ -83,10 +91,7 @@
   $('#ruleChips').addEventListener('click', (e) => {
     const chip = e.target.closest('.chip');
     if (!chip) return;
-    const k = chip.dataset.rule;
-    const on = state.enabledRules.includes(k);
-    if (on && state.enabledRules.length === 1) return toast('Keep at least one match rule enabled.', 'error');
-    state.enabledRules = on ? state.enabledRules.filter((x) => x !== k) : [...state.enabledRules, k];
+    state.enabledRules = [chip.dataset.rule];
     store.set('rules', state.enabledRules);
     renderRuleChips();
   });
@@ -446,7 +451,7 @@
   setMode(state.mode);
 
   // ---------- search ----------
-  state.searchField = store.get('searchField', 'any');
+  state.searchField = store.get('searchField', 'passport');
   $('#searchPath').value = store.get('searchPath', '') || store.get('oldPath', '');
   $('#searchPath').addEventListener('change', (e) => store.set('searchPath', e.target.value.trim()));
 
