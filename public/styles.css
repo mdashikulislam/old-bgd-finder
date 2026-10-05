@@ -670,7 +670,8 @@ mark { background: color-mix(in srgb, var(--amber) 40%, transparent); color: inh
 
 /* ---------- responsive ---------- */
 /* ---------- analyzer view ---------- */
-.analyze-setup { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: end; }
+.chip.static { cursor: default; padding-left: 10px; }
+.chip.static:hover { border-color: var(--border); background: var(--surface-solid); color: var(--text-2); transform: none; }
 .analyze-summary { margin: 0; }
 .datum.empty .datum-value { color: var(--muted); font-weight: 400; }
 
@@ -687,8 +688,6 @@ mark { background: color-mix(in srgb, var(--amber) 40%, transparent); color: inh
   .topbar { flex-wrap: wrap; gap: 10px; }
   .modes { order: 3; width: 100%; }
   .mode { flex: 1; justify-content: center; }
-  .analyze-setup { grid-template-columns: 1fr; }
-  .analyze-setup .btn-lg { width: 100%; }
   .search-input-wrap { flex-wrap: wrap; padding: 8px 8px 8px 14px; }
   .search-input-wrap .btn-lg { width: 100%; }
   .pickers { grid-template-columns: 1fr; }

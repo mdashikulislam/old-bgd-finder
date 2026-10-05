@@ -204,21 +204,34 @@
    </div>
 
    <div id="analyzeView" class="hidden">
-    <section class="card search-setup">
-      <div class="analyze-setup">
-        <div class="picker compact">
-          <div class="picker-head">
-            <span class="picker-icon new">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-            </span>
-            <div>
-              <div class="picker-title">Folder to analyze</div>
-              <div class="picker-sub">Every PDF in this folder and its sub-folders is read</div>
-            </div>
+    <section class="card setup">
+      <div class="picker">
+        <div class="picker-head">
+          <span class="picker-icon new">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          </span>
+          <div>
+            <div class="picker-title">Folder to analyze</div>
+            <div class="picker-sub">Every PDF in this folder and its sub-folders is read</div>
           </div>
-          <div class="path-field">
-            <input type="text" id="analyzePath" placeholder="/path/to/pdf/folder" spellcheck="false" autocomplete="off" />
-            <button class="btn btn-soft" data-browse="analyzePath">Browse</button>
+        </div>
+        <div class="path-field">
+          <input type="text" id="analyzePath" placeholder="/path/to/pdf/folder" spellcheck="false" autocomplete="off" />
+          <button class="btn btn-soft" data-browse="analyzePath">Browse</button>
+        </div>
+      </div>
+
+      <div class="setup-footer">
+        <div class="rules">
+          <span class="rules-label">Shows</span>
+          <div class="chips field-list">
+            <span class="chip static">Given Name</span>
+            <span class="chip static">Surname</span>
+            <span class="chip static">Application ID</span>
+            <span class="chip static">NID</span>
+            <span class="chip static">Phone No</span>
+            <span class="chip static">Email</span>
+            <span class="chip static">Web Registration Date</span>
           </div>
         </div>
         <button class="btn btn-primary btn-lg" id="analyzeBtn">
