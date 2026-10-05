@@ -36,6 +36,8 @@ Name matching ignores word order and prefixes such as MD / MST / MOHAMMAD.
 
 The **Search PDFs** tab looks up one or more values in any folder (sub-folders included). Type a passport no., NID, given name, surname, email, phone or application ID. Separate several values with commas. "Look in" limits the search to one field, or leave it on **Any field**. Each matching PDF shows all of its extracted data with the matching values highlighted, plus its file location. Values that weren't found in any PDF are listed in red.
 
+The **Analyzer** tab reads every PDF in one folder (sub-folders included) and lists each applicant's given name, surname, application ID, NID, phone number, email address and web registration date, together with the file's location. The filter box narrows the list, and **Export CSV** downloads what is shown.
+
 ## Notes
 
 - Extracted data is cached in `.cache/pdf-index.json`, keyed by file path, size and modified time, so later scans are close to instant. Clear it with the trash icon.

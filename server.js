@@ -287,6 +287,80 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
+// ---------- analyze (Server-Sent Events) ----------
+
+const ANALYZE_FIELDS = ['givenName', 'surname', 'applicationId', 'nid', 'phone', 'mobile', 'email', 'registrationDate'];
+
+app.get('/api/analyze', async (req, res) => {
+  res.set({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
+  res.flushHeaders();
+  const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+
+  const ac = new AbortController();
+  res.on('close', () => ac.abort());
+
+  if (scanRunning) {
+    send('fail', { message: 'Another scan is already running. Please wait for it to finish.' });
+    return res.end();
+  }
+  scanRunning = true;
+  const t0 = Date.now();
+
+  try {
+    const dir = cleanPath(req.query.path);
+    if (!req.query.path) throw new Error('Please choose a folder to analyze.');
+    await assertDir(dir);
+
+    send('phase', { label: 'Finding PDF files…' });
+    const files = await findPdfs(dir);
+    if (!files.length) throw new Error('No PDF files were found in this folder.');
+    send('discovered', { count: files.length });
+
+    send('phase', { label: 'Reading PDFs…' });
+    let done = 0;
+    let lastEmit = 0;
+    const recs = await extractAll(files, {
+      rootDir: dir,
+      signal: ac.signal,
+      onItem: (rec) => {
+        done++;
+        knownFiles.add(rec.path);
+        const now = Date.now();
+        if (now - lastEmit > 120 || done === files.length) {
+          lastEmit = now;
+          send('progress', { done, total: files.length, current: rec.name });
+        }
+      },
+    });
+    if (ac.signal.aborted) return;
+
+    const rows = [];
+    const errors = [];
+    for (const rec of recs) {
+      if (rec.error || !rec.data?.hasText) {
+        errors.push({ path: rec.path, name: rec.name, reason: rec.error || 'No readable text (scanned image?)' });
+        continue;
+      }
+      const d = {};
+      for (const k of ANALYZE_FIELDS) if (rec.data[k]) d[k] = rec.data[k];
+      rows.push({ path: rec.path, name: rec.name, folder: rec.folder, relFolder: rec.relFolder, data: d });
+    }
+    rows.sort((a, b) => a.path.localeCompare(b.path));
+
+    send('done', {
+      path: dir,
+      stats: { scanned: recs.length, readable: rows.length, unreadable: errors.length, ms: Date.now() - t0 },
+      rows,
+      errors,
+    });
+  } catch (err) {
+    send('fail', { message: err.message });
+  } finally {
+    scanRunning = false;
+    res.end();
+  }
+});
+
 // ---------- file actions ----------
 
 function knownPath(p) {

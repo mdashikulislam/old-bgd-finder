@@ -101,7 +101,7 @@
   $$('[data-browse]').forEach((btn) => {
     btn.onclick = async () => {
       const target = btn.dataset.browse;
-      const title = { newPath: 'Select the NEW files folder', oldPath: 'Select the OLD files folder', searchPath: 'Select a folder to search' }[target];
+      const title = { newPath: 'Select the NEW files folder', oldPath: 'Select the OLD files folder', searchPath: 'Select a folder to search', analyzePath: 'Select a folder to analyze' }[target];
       btn.disabled = true;
       const label = btn.textContent;
       btn.textContent = 'Opening…';
@@ -179,6 +179,7 @@
   function setRunning(on, mode = state.mode) {
     $('#compareBtn').disabled = on;
     $('#searchBtn').disabled = on;
+    $('#analyzeBtn').disabled = on;
     if (on) $(`.progress-slot[data-for="${mode}"]`).append($('#progressCard'));
     $('#progressCard').classList.toggle('hidden', !on);
     if (on) {
@@ -452,6 +453,7 @@
     $$('.mode').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
     $('#compareView').classList.toggle('hidden', mode !== 'compare');
     $('#searchView').classList.toggle('hidden', mode !== 'search');
+    $('#analyzeView').classList.toggle('hidden', mode !== 'analyze');
     if (state.es) $(`.progress-slot[data-for="${mode}"]`).append($('#progressCard'));
     if (mode === 'search') $('#searchQuery').focus();
   }
@@ -606,6 +608,135 @@
       </article>`;
   }
 
+  // ---------- analyzer ----------
+  const ANALYZE_COLS = [
+    ['givenName', 'Given Name'], ['surname', 'Surname'], ['applicationId', 'Application ID', true],
+    ['nid', 'NID', true], ['phone', 'Phone No', true],
+    ['email', 'Email Address'], ['registrationDate', 'Web Registration Date', true],
+  ];
+  const analyzeValue = (d, k) => (k === 'phone' ? d.phone || d.mobile || '' : d[k] || '');
+
+  $('#analyzePath').value = store.get('analyzePath', '') || store.get('oldPath', '');
+  $('#analyzePath').addEventListener('change', (e) => store.set('analyzePath', e.target.value.trim()));
+  $('#analyzeBtn').onclick = startAnalyze;
+  $('#analyzePath').addEventListener('keydown', (e) => e.key === 'Enter' && !state.es && startAnalyze());
+
+  function startAnalyze() {
+    const dir = $('#analyzePath').value.trim();
+    if (!dir) return toast('Choose a folder to analyze.', 'error');
+    store.set('analyzePath', dir);
+
+    setRunning(true, 'analyze');
+    $('#analyzeEmpty').classList.add('hidden');
+    const es = new EventSource('/api/analyze?' + new URLSearchParams({ path: dir }));
+    state.es = es;
+
+    es.addEventListener('phase', (e) => { $('#progressPhase').textContent = JSON.parse(e.data).label; });
+    es.addEventListener('discovered', (e) => {
+      $('#progressCurrent').textContent = `Found ${JSON.parse(e.data).count.toLocaleString()} PDFs`;
+    });
+    es.addEventListener('progress', (e) => {
+      const d = JSON.parse(e.data);
+      $('#barFill').style.width = ((d.done / d.total) * 100).toFixed(1) + '%';
+      $('#progressCount').textContent = `${d.done.toLocaleString()} / ${d.total.toLocaleString()}`;
+      $('#progressCurrent').textContent = d.current;
+    });
+    es.addEventListener('done', (e) => {
+      es.close();
+      state.es = null;
+      setRunning(false);
+      state.analyze = JSON.parse(e.data);
+      $('#analyzeFilter').value = '';
+      renderAnalyze();
+    });
+    es.addEventListener('fail', (e) => {
+      es.close();
+      state.es = null;
+      setRunning(false);
+      toast(JSON.parse(e.data).message, 'error', 6000);
+      if (!state.analyze) $('#analyzeEmpty').classList.remove('hidden');
+    });
+    es.onerror = () => {
+      if (!state.es) return;
+      es.close();
+      state.es = null;
+      setRunning(false);
+      toast('Lost connection to the server. Is it still running?', 'error', 6000);
+    };
+  }
+
+  function analyzeFiltered() {
+    const q = $('#analyzeFilter').value.trim().toLowerCase();
+    const rows = state.analyze?.rows || [];
+    if (!q) return rows;
+    return rows.filter((r) => ANALYZE_COLS.some(([k]) => analyzeValue(r.data, k).toLowerCase().includes(q)) || r.path.toLowerCase().includes(q));
+  }
+
+  function renderAnalyze() {
+    const a = state.analyze;
+    $('#analyzeResultsSection').classList.remove('hidden');
+    const list = analyzeFiltered();
+    const filtered = list.length !== a.rows.length ? ` · ${list.length.toLocaleString()} shown` : '';
+    $('#analyzeSummary').innerHTML = `
+      <strong>${a.stats.readable.toLocaleString()} applicant${a.stats.readable === 1 ? '' : 's'}</strong>
+      <span>from ${a.stats.scanned.toLocaleString()} PDFs · ${fmtMs(a.stats.ms)}${filtered}</span>
+      ${a.stats.unreadable ? `<span class="tag diff" title="PDFs with no readable form text">${ICONS.warn}${a.stats.unreadable} unreadable</span>` : ''}`;
+    $('#analyzeList').innerHTML = list.length ? '' : '<div class="card list-empty">No applicants match this filter.</div>';
+    state.analyzeList = list;
+    state.analyzeShown = 0;
+    showMoreAnalyze();
+  }
+
+  function analyzeCardHtml(r, i) {
+    const d = r.data;
+    const fullName = [d.givenName, d.surname].filter(Boolean).join(' ');
+    const cells = ANALYZE_COLS.map(([k, label, mono]) => {
+      const v = analyzeValue(d, k);
+      return `
+      <div class="datum ${v ? '' : 'empty'}">
+        <div class="datum-label">${label}</div>
+        <div class="datum-value ${mono ? 'mono' : ''}">${v ? esc(v) : '—'}</div>
+      </div>`;
+    }).join('');
+    return `
+      <article class="card found">
+        <div class="person">
+          <div class="person-head">
+            ${avatar(fullName)}
+            <div>
+              <div class="person-name">${esc(fullName || 'Unknown name')}</div>
+              <div class="person-meta">Applicant #${i + 1}${d.applicationId ? ' · ' + esc(d.applicationId) : ''}</div>
+            </div>
+          </div>
+          ${fileRow(r)}
+        </div>
+        <div class="found-data"><div class="data-grid">${cells}</div></div>
+      </article>`;
+  }
+
+  function showMoreAnalyze() {
+    const list = state.analyzeList || [];
+    const slice = list.slice(state.analyzeShown, state.analyzeShown + PAGE);
+    $('#analyzeList').insertAdjacentHTML('beforeend', slice.map((r, i) => analyzeCardHtml(r, state.analyzeShown + i)).join(''));
+    state.analyzeShown += slice.length;
+    const rest = list.length - state.analyzeShown;
+    $('#analyzeMoreBtn').classList.toggle('hidden', rest <= 0);
+    $('#analyzeMoreBtn').textContent = `Show ${Math.min(rest, PAGE)} more (${rest} remaining)`;
+  }
+  $('#analyzeMoreBtn').onclick = showMoreAnalyze;
+  let analyzeFilterTimer;
+  $('#analyzeFilter').addEventListener('input', () => {
+    clearTimeout(analyzeFilterTimer);
+    analyzeFilterTimer = setTimeout(() => state.analyze && renderAnalyze(), 120);
+  });
+
+  $('#analyzeExportBtn').onclick = () => {
+    if (!state.analyze) return;
+    const rows = [[...ANALYZE_COLS.map(([, label]) => label), 'File']];
+    for (const r of analyzeFiltered()) rows.push([...ANALYZE_COLS.map(([k]) => analyzeValue(r.data, k)), r.path]);
+    downloadCsv(rows, 'bdg-analyze');
+  };
+
   // ---------- export ----------
   $('#exportBtn').onclick = () => {
     if (!state.data) return;
@@ -623,14 +754,18 @@
       }
     }
     for (const e of state.data.errors) rows.push(['UNREADABLE', '', '', '', '', '', e.path, '', '', '', '', '', '', '', e.reason, '']);
+    downloadCsv(rows, 'bdg-compare');
+  };
+
+  function downloadCsv(rows, prefix) {
     const csv = rows.map((row) => row.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `bdg-compare-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.csv`;
+    a.download = `${prefix}-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.csv`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  };
+  }
 
   // ---------- cache ----------
   $('#clearCacheBtn').onclick = async () => {

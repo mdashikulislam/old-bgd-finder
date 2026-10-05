@@ -32,6 +32,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         Search PDFs
       </button>
+      <button class="mode" data-mode="analyze">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5M4 19h16M8 15v-4M12 15V8M16 15v-6"/></svg>
+        Analyzer
+      </button>
     </nav>
     <div class="topbar-actions">
       <button class="icon-btn" id="clearCacheBtn" title="Clear the extraction cache">
@@ -196,6 +200,66 @@
       </div>
       <h2>Search any folder of PDFs</h2>
       <p>Type a passport number, NID, name, mobile number or application ID. Every PDF in the folder is read and you get its full data and file location.</p>
+    </section>
+   </div>
+
+   <div id="analyzeView" class="hidden">
+    <section class="card search-setup">
+      <div class="analyze-setup">
+        <div class="picker compact">
+          <div class="picker-head">
+            <span class="picker-icon new">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+            </span>
+            <div>
+              <div class="picker-title">Folder to analyze</div>
+              <div class="picker-sub">Every PDF in this folder and its sub-folders is read</div>
+            </div>
+          </div>
+          <div class="path-field">
+            <input type="text" id="analyzePath" placeholder="/path/to/pdf/folder" spellcheck="false" autocomplete="off" />
+            <button class="btn btn-soft" data-browse="analyzePath">Browse</button>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-lg" id="analyzeBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5M4 19h16M8 15v-4M12 15V8M16 15v-6"/></svg>
+          <span>Analyze</span>
+        </button>
+      </div>
+    </section>
+
+    <div class="progress-slot" data-for="analyze"></div>
+
+    <section class="hidden" id="analyzeResultsSection">
+      <div class="toolbar">
+        <div class="search-summary analyze-summary" id="analyzeSummary"></div>
+        <div class="toolbar-right">
+          <label class="search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input type="search" id="analyzeFilter" placeholder="Filter rows…" />
+          </label>
+          <button class="btn btn-soft" id="analyzeExportBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+            Export CSV
+          </button>
+        </div>
+      </div>
+      <div id="analyzeList" class="results-list"></div>
+      <div class="load-more-wrap"><button class="btn btn-soft hidden" id="analyzeMoreBtn">Show more</button></div>
+    </section>
+
+    <section class="empty" id="analyzeEmpty">
+      <div class="empty-art">
+        <svg viewBox="0 0 120 120" fill="none">
+          <rect x="18" y="22" width="56" height="72" rx="8" class="ea-1"/>
+          <rect x="34" y="30" width="56" height="72" rx="8" class="ea-2"/>
+          <path d="M46 50h32M46 60h32M46 70h20" class="ea-3"/>
+          <circle cx="86" cy="82" r="14" class="ea-4"/>
+          <path d="m96 92 10 10" class="ea-4"/>
+        </svg>
+      </div>
+      <h2>Analyze a folder of PDFs</h2>
+      <p>Pick a folder and every PDF in it is read. You get each applicant's given name, surname, application ID, NID, phone number, email address and web registration date.</p>
     </section>
    </div>
 
