@@ -679,6 +679,8 @@
       setRunning(false);
       state.analyze = JSON.parse(e.data);
       $('#analyzeFilter').value = '';
+      state.analyzeTab = 'all';
+      $$('#analyzeTabs .tab').forEach((t) => t.classList.toggle('active', t.dataset.status === 'all'));
       renderAnalyze();
     });
     es.addEventListener('fail', (e) => {
@@ -697,28 +699,41 @@
     };
   }
 
+  state.analyzeTab = 'all';
+  const rowStatus = (r) => registrationStatus(r.data.registrationDate)?.status || 'nodate';
+
   function analyzeFiltered() {
     const q = $('#analyzeFilter').value.trim().toLowerCase();
-    const rows = state.analyze?.rows || [];
+    let rows = state.analyze?.rows || [];
+    if (state.analyzeTab !== 'all') rows = rows.filter((r) => rowStatus(r) === state.analyzeTab);
     if (!q) return rows;
     return rows.filter((r) => ANALYZE_COLS.some(([k]) => analyzeValue(r.data, k).toLowerCase().includes(q)) || r.path.toLowerCase().includes(q));
   }
+  $('#analyzeTabs').addEventListener('click', (e) => {
+    const b = e.target.closest('.tab');
+    if (!b || !state.analyze) return;
+    state.analyzeTab = b.dataset.status;
+    $$('#analyzeTabs .tab').forEach((t) => t.classList.toggle('active', t === b));
+    renderAnalyze();
+  });
 
   function renderAnalyze() {
     const a = state.analyze;
     $('#analyzeResultsSection').classList.remove('hidden');
     const list = analyzeFiltered();
     const filtered = list.length !== a.rows.length ? ` · ${list.length.toLocaleString()} shown` : '';
-    const statuses = a.rows.map((r) => registrationStatus(r.data.registrationDate)?.status);
-    const expired = statuses.filter((x) => x === 'expired').length;
-    const expiring = statuses.filter((x) => x === 'expiring').length;
+    const counts = { all: a.rows.length, ok: 0, expiring: 0, expired: 0, nodate: 0 };
+    for (const r of a.rows) counts[rowStatus(r)]++;
+    $('#acAll').textContent = counts.all;
+    $('#acOk').textContent = counts.ok;
+    $('#acExpiring').textContent = counts.expiring;
+    $('#acExpired').textContent = counts.expired;
     $('#analyzeSummary').innerHTML = `
       <strong>${a.stats.readable.toLocaleString()} applicant${a.stats.readable === 1 ? '' : 's'}</strong>
       <span>from ${a.stats.scanned.toLocaleString()} PDFs · ${fmtMs(a.stats.ms)}${filtered}</span>
-      ${expired ? `<span class="tag diff" title="Web registration is ${REG_VALID_DAYS} days old or more">${ICONS.x}${expired} expired</span>` : ''}
-      ${expiring ? `<span class="tag warn" title="Fewer than ${REG_WARN_DAYS} days of registration left">${ICONS.clock}${expiring} expiring soon</span>` : ''}
+      ${counts.nodate ? `<span class="tag" title="PDFs with no web registration date">${ICONS.warn}${counts.nodate} without a date</span>` : ''}
       ${a.stats.unreadable ? `<span class="tag diff" title="PDFs with no readable form text">${ICONS.warn}${a.stats.unreadable} unreadable</span>` : ''}`;
-    $('#analyzeList').innerHTML = list.length ? '' : '<div class="card list-empty">No applicants match this filter.</div>';
+    $('#analyzeList').innerHTML = list.length ? '' : '<div class="card list-empty">No applicants in this group match.</div>';
     state.analyzeList = list;
     state.analyzeShown = 0;
     showMoreAnalyze();

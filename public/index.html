@@ -244,8 +244,14 @@
     <div class="progress-slot" data-for="analyze"></div>
 
     <section class="hidden" id="analyzeResultsSection">
-      <div class="toolbar">
-        <div class="search-summary analyze-summary" id="analyzeSummary"></div>
+      <div class="search-summary" id="analyzeSummary"></div>
+      <div class="toolbar analyze-toolbar">
+        <div class="tabs" id="analyzeTabs">
+          <button class="tab active" data-status="all">All <span class="tab-count" id="acAll">0</span></button>
+          <button class="tab" data-status="ok">Valid <span class="tab-count" id="acOk">0</span></button>
+          <button class="tab" data-status="expiring">Expiring soon <span class="tab-count" id="acExpiring">0</span></button>
+          <button class="tab" data-status="expired">Expired <span class="tab-count" id="acExpired">0</span></button>
+        </div>
         <div class="toolbar-right">
           <label class="search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>

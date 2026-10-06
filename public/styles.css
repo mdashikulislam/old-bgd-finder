@@ -673,7 +673,7 @@ mark { background: color-mix(in srgb, var(--amber) 40%, transparent); color: inh
 /* ---------- analyzer view ---------- */
 .chip.static { cursor: default; padding-left: 10px; }
 .chip.static:hover { border-color: var(--border); background: var(--surface-solid); color: var(--text-2); transform: none; }
-.analyze-summary { margin: 0; }
+.analyze-toolbar { margin-top: 0; }
 .datum.empty .datum-value { color: var(--muted); font-weight: 400; }
 
 /* registration age: expired (30+ days) tints the whole card, expiring (<5 days left) just the date */
