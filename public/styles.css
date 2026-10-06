@@ -483,6 +483,7 @@ input { font: inherit; color: inherit; }
 .tag.reason { background: var(--primary-soft); color: var(--primary); }
 .tag.same { background: var(--green-soft); color: var(--green); }
 .tag.diff { background: var(--red-soft); color: var(--red); }
+.tag.warn { background: var(--amber-soft); color: color-mix(in srgb, var(--amber) 70%, var(--text)); }
 .no-match {
   display: flex;
   align-items: center;
@@ -674,6 +675,18 @@ mark { background: color-mix(in srgb, var(--amber) 40%, transparent); color: inh
 .chip.static:hover { border-color: var(--border); background: var(--surface-solid); color: var(--text-2); transform: none; }
 .analyze-summary { margin: 0; }
 .datum.empty .datum-value { color: var(--muted); font-weight: 400; }
+
+/* registration age: expired (30+ days) tints the whole card, expiring (<5 days left) just the date */
+.card.found.expired {
+  background: color-mix(in srgb, var(--red) 6%, var(--surface-solid));
+  border-color: color-mix(in srgb, var(--red) 30%, transparent);
+}
+.card.found.expired .found-data { background: color-mix(in srgb, var(--red) 4%, transparent); }
+.card.found.expired .person { border-color: color-mix(in srgb, var(--red) 18%, transparent); }
+.datum.expired { border-color: color-mix(in srgb, var(--red) 45%, transparent); background: var(--red-soft); }
+.datum.expired .datum-label, .datum.expired .datum-value { color: var(--red); }
+.datum.expiring { border-color: color-mix(in srgb, var(--amber) 55%, transparent); background: var(--amber-soft); }
+.datum.expiring .datum-label { color: color-mix(in srgb, var(--amber) 70%, var(--text)); }
 
 @media (max-width: 1000px) {
   .stats { grid-template-columns: repeat(2, 1fr); }

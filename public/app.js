@@ -616,6 +616,38 @@
   ];
   const analyzeValue = (d, k) => (k === 'phone' ? d.phone || d.mobile || '' : d[k] || '');
 
+  // Web registrations stay valid for 30 days.
+  const REG_VALID_DAYS = 30;
+  const REG_WARN_DAYS = 5;
+  const MONTHS = { JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11 };
+  function parseFormDate(s) {
+    const m = String(s || '').trim().match(/^(\d{1,2})[-/ ]([A-Za-z]{3})[-/ ](\d{4})$/);
+    if (!m) return null;
+    const mon = MONTHS[m[2].toUpperCase()];
+    if (mon === undefined) return null;
+    return new Date(Number(m[3]), mon, Number(m[1]));
+  }
+  /** Returns { age, left, status } for a registration date, or null when the date is unreadable. */
+  function registrationStatus(dateStr) {
+    const d = parseFormDate(dateStr);
+    if (!d) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const age = Math.floor((today - d) / 86400000);
+    const left = REG_VALID_DAYS - age;
+    const status = age >= REG_VALID_DAYS ? 'expired' : left < REG_WARN_DAYS ? 'expiring' : 'ok';
+    return { age, left, status };
+  }
+  function registrationBadge(st) {
+    if (!st) return '';
+    if (st.status === 'expired') {
+      const over = st.age - REG_VALID_DAYS;
+      return `<span class="tag diff" title="Registered ${st.age} days ago">${ICONS.x}${over === 0 ? 'Expired today' : `Expired ${over} day${over === 1 ? '' : 's'} ago`}</span>`;
+    }
+    if (st.status === 'expiring') return `<span class="tag warn" title="Registered ${st.age} days ago">${ICONS.clock}${st.left === 0 ? 'Expires today' : `${st.left} day${st.left === 1 ? '' : 's'} left`}</span>`;
+    return '';
+  }
+
   $('#analyzePath').value = store.get('analyzePath', '') || store.get('oldPath', '');
   $('#analyzePath').addEventListener('change', (e) => store.set('analyzePath', e.target.value.trim()));
   $('#analyzeBtn').onclick = startAnalyze;
@@ -677,9 +709,14 @@
     $('#analyzeResultsSection').classList.remove('hidden');
     const list = analyzeFiltered();
     const filtered = list.length !== a.rows.length ? ` · ${list.length.toLocaleString()} shown` : '';
+    const statuses = a.rows.map((r) => registrationStatus(r.data.registrationDate)?.status);
+    const expired = statuses.filter((x) => x === 'expired').length;
+    const expiring = statuses.filter((x) => x === 'expiring').length;
     $('#analyzeSummary').innerHTML = `
       <strong>${a.stats.readable.toLocaleString()} applicant${a.stats.readable === 1 ? '' : 's'}</strong>
       <span>from ${a.stats.scanned.toLocaleString()} PDFs · ${fmtMs(a.stats.ms)}${filtered}</span>
+      ${expired ? `<span class="tag diff" title="Web registration is ${REG_VALID_DAYS} days old or more">${ICONS.x}${expired} expired</span>` : ''}
+      ${expiring ? `<span class="tag warn" title="Fewer than ${REG_WARN_DAYS} days of registration left">${ICONS.clock}${expiring} expiring soon</span>` : ''}
       ${a.stats.unreadable ? `<span class="tag diff" title="PDFs with no readable form text">${ICONS.warn}${a.stats.unreadable} unreadable</span>` : ''}`;
     $('#analyzeList').innerHTML = list.length ? '' : '<div class="card list-empty">No applicants match this filter.</div>';
     state.analyzeList = list;
@@ -690,16 +727,18 @@
   function analyzeCardHtml(r, i) {
     const d = r.data;
     const fullName = [d.givenName, d.surname].filter(Boolean).join(' ');
+    const reg = registrationStatus(d.registrationDate);
+    const regClass = reg && reg.status !== 'ok' ? reg.status : '';
     const cells = ANALYZE_COLS.map(([k, label, mono]) => {
       const v = analyzeValue(d, k);
       return `
-      <div class="datum ${v ? '' : 'empty'}">
+      <div class="datum ${v ? '' : 'empty'} ${k === 'registrationDate' ? regClass : ''}">
         <div class="datum-label">${label}</div>
         <div class="datum-value ${mono ? 'mono' : ''}">${v ? esc(v) : '—'}</div>
       </div>`;
     }).join('');
     return `
-      <article class="card found">
+      <article class="card found ${regClass}">
         <div class="person">
           <div class="person-head">
             ${avatar(fullName)}
@@ -708,6 +747,7 @@
               <div class="person-meta">Applicant #${i + 1}${d.applicationId ? ' · ' + esc(d.applicationId) : ''}</div>
             </div>
           </div>
+          ${registrationBadge(reg) ? `<div class="tags">${registrationBadge(reg)}</div>` : ''}
           ${fileRow(r)}
         </div>
         <div class="found-data"><div class="data-grid">${cells}</div></div>
