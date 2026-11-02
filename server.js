@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { findPdfs, extractAll, clearCache } from './lib/scanner.js';
 import { matchRecords, RULES } from './lib/matcher.js';
 import { searchRecord, parseQueries, SEARCH_FIELDS } from './lib/search.js';
+import { findDuplicates, DUP_FIELDS, KEY_LABELS } from './lib/duplicates.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const HOST = '127.0.0.1';
@@ -58,6 +59,8 @@ app.get('/api/info', (_req, res) => {
     home: os.homedir(),
     rules: Object.entries(RULES).map(([key, r]) => ({ key, ...r })),
     searchFields: Object.entries(SEARCH_FIELDS).map(([key, f]) => ({ key, label: f.label })),
+    dupFields: Object.entries(DUP_FIELDS).map(([key, f]) => ({ key, label: f.label })),
+    dupKeyLabels: KEY_LABELS,
   });
 });
 
@@ -352,6 +355,84 @@ app.get('/api/analyze', async (req, res) => {
       stats: { scanned: recs.length, readable: rows.length, unreadable: errors.length, ms: Date.now() - t0 },
       rows,
       errors,
+    });
+  } catch (err) {
+    send('fail', { message: err.message });
+  } finally {
+    scanRunning = false;
+    res.end();
+  }
+});
+
+// ---------- duplicates (Server-Sent Events) ----------
+
+const DUP_DATA_FIELDS = ['givenName', 'surname', 'passportNo', 'nid', 'applicationId', 'phone', 'mobile', 'email', 'registrationDate', 'dob'];
+
+app.get('/api/duplicates', async (req, res) => {
+  res.set({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
+  res.flushHeaders();
+  const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+
+  const ac = new AbortController();
+  res.on('close', () => ac.abort());
+
+  if (scanRunning) {
+    send('fail', { message: 'Another scan is already running. Please wait for it to finish.' });
+    return res.end();
+  }
+  scanRunning = true;
+  const t0 = Date.now();
+
+  try {
+    const dir = cleanPath(req.query.path);
+    const field = DUP_FIELDS[req.query.field] ? String(req.query.field) : 'any';
+    if (!req.query.path) throw new Error('Please choose a folder to check.');
+    await assertDir(dir);
+
+    send('phase', { label: 'Finding PDF files…' });
+    const files = await findPdfs(dir);
+    if (!files.length) throw new Error('No PDF files were found in this folder.');
+    send('discovered', { count: files.length });
+
+    send('phase', { label: 'Reading PDFs…' });
+    let done = 0;
+    let lastEmit = 0;
+    const recs = await extractAll(files, {
+      rootDir: dir,
+      signal: ac.signal,
+      onItem: (rec) => {
+        done++;
+        knownFiles.add(rec.path);
+        const now = Date.now();
+        if (now - lastEmit > 120 || done === files.length) {
+          lastEmit = now;
+          send('progress', { done, total: files.length, current: rec.name });
+        }
+      },
+    });
+    if (ac.signal.aborted) return;
+
+    send('phase', { label: 'Looking for duplicates…' });
+    const readable = recs.filter((r) => !r.error && r.data?.hasText);
+    const slim = (rec) => {
+      const d = {};
+      for (const k of DUP_DATA_FIELDS) if (rec.data[k]) d[k] = rec.data[k];
+      return { path: rec.path, name: rec.name, folder: rec.folder, relFolder: rec.relFolder, data: d };
+    };
+    const groups = findDuplicates(readable, field).map((g) => ({ keys: g.keys, records: g.records.map(slim) }));
+
+    send('done', {
+      path: dir,
+      field,
+      stats: {
+        scanned: recs.length,
+        readable: readable.length,
+        unreadable: recs.length - readable.length,
+        groups: groups.length,
+        files: groups.reduce((n, g) => n + g.records.length, 0),
+        ms: Date.now() - t0,
+      },
+      groups,
     });
   } catch (err) {
     send('fail', { message: err.message });

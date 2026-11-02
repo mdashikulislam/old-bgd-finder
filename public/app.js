@@ -70,6 +70,13 @@
     state.platform = info.platform;
     state.rules = info.rules;
     state.searchFields = info.searchFields;
+    state.dupFields = info.dupFields;
+    state.dupKeyLabels = info.dupKeyLabels;
+    if (!state.dupFields.some((f) => f.key === state.dupField)) {
+      state.dupField = 'any';
+      store.set('dupField', state.dupField);
+    }
+    renderDupChips();
     if (!state.enabledRules.some((k) => state.rules.some((r) => r.key === k))) {
       state.enabledRules = ['passport'];
       store.set('rules', state.enabledRules);
@@ -101,7 +108,7 @@
   $$('[data-browse]').forEach((btn) => {
     btn.onclick = async () => {
       const target = btn.dataset.browse;
-      const title = { newPath: 'Select the NEW files folder', oldPath: 'Select the OLD files folder', searchPath: 'Select a folder to search', analyzePath: 'Select a folder to analyze' }[target];
+      const title = { newPath: 'Select the NEW files folder', oldPath: 'Select the OLD files folder', searchPath: 'Select a folder to search', analyzePath: 'Select a folder to analyze', dupPath: 'Select a folder to check for duplicates' }[target];
       btn.disabled = true;
       const label = btn.textContent;
       btn.textContent = 'Opening…';
@@ -180,6 +187,7 @@
     $('#compareBtn').disabled = on;
     $('#searchBtn').disabled = on;
     $('#analyzeBtn').disabled = on;
+    $('#dupBtn').disabled = on;
     if (on) $(`.progress-slot[data-for="${mode}"]`).append($('#progressCard'));
     $('#progressCard').classList.toggle('hidden', !on);
     if (on) {
@@ -454,6 +462,7 @@
     $('#compareView').classList.toggle('hidden', mode !== 'compare');
     $('#searchView').classList.toggle('hidden', mode !== 'search');
     $('#analyzeView').classList.toggle('hidden', mode !== 'analyze');
+    $('#duplicatesView').classList.toggle('hidden', mode !== 'duplicates');
     if (state.es) $(`.progress-slot[data-for="${mode}"]`).append($('#progressCard'));
     if (mode === 'search') $('#searchQuery').focus();
   }
@@ -790,6 +799,169 @@
     const rows = [[...ANALYZE_COLS.map(([, label]) => label), 'File']];
     for (const r of analyzeFiltered()) rows.push([...ANALYZE_COLS.map(([k]) => analyzeValue(r.data, k)), r.path]);
     downloadCsv(rows, 'bdg-analyze');
+  };
+
+  // ---------- duplicate finder ----------
+  state.dupField = store.get('dupField', 'any');
+  $('#dupPath').value = store.get('dupPath', '') || store.get('oldPath', '');
+  $('#dupPath').addEventListener('change', (e) => store.set('dupPath', e.target.value.trim()));
+
+  function renderDupChips() {
+    $('#dupChips').innerHTML = (state.dupFields || []).map((f) => `
+      <button class="chip ${state.dupField === f.key ? 'on' : ''}" data-field="${f.key}">
+        <span class="dot"></span>${esc(f.label)}
+      </button>`).join('');
+  }
+  $('#dupChips').addEventListener('click', (e) => {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    state.dupField = chip.dataset.field;
+    store.set('dupField', state.dupField);
+    renderDupChips();
+  });
+
+  $('#dupBtn').onclick = startDuplicates;
+  $('#dupPath').addEventListener('keydown', (e) => e.key === 'Enter' && !state.es && startDuplicates());
+
+  function startDuplicates() {
+    const dir = $('#dupPath').value.trim();
+    if (!dir) return toast('Choose a folder to check.', 'error');
+    store.set('dupPath', dir);
+
+    setRunning(true, 'duplicates');
+    $('#dupEmpty').classList.add('hidden');
+    const es = new EventSource('/api/duplicates?' + new URLSearchParams({ path: dir, field: state.dupField }));
+    state.es = es;
+
+    es.addEventListener('phase', (e) => { $('#progressPhase').textContent = JSON.parse(e.data).label; });
+    es.addEventListener('discovered', (e) => {
+      $('#progressCurrent').textContent = `Found ${JSON.parse(e.data).count.toLocaleString()} PDFs`;
+    });
+    es.addEventListener('progress', (e) => {
+      const d = JSON.parse(e.data);
+      $('#barFill').style.width = ((d.done / d.total) * 100).toFixed(1) + '%';
+      $('#progressCount').textContent = `${d.done.toLocaleString()} / ${d.total.toLocaleString()}`;
+      $('#progressCurrent').textContent = d.current;
+    });
+    es.addEventListener('done', (e) => {
+      es.close();
+      state.es = null;
+      setRunning(false);
+      state.dup = JSON.parse(e.data);
+      $('#dupFilter').value = '';
+      renderDuplicates();
+    });
+    es.addEventListener('fail', (e) => {
+      es.close();
+      state.es = null;
+      setRunning(false);
+      toast(JSON.parse(e.data).message, 'error', 6000);
+      if (!state.dup) $('#dupEmpty').classList.remove('hidden');
+    });
+    es.onerror = () => {
+      if (!state.es) return;
+      es.close();
+      state.es = null;
+      setRunning(false);
+      toast('Lost connection to the server. Is it still running?', 'error', 6000);
+    };
+  }
+
+  const dupKeyLabel = (k) => state.dupKeyLabels?.[k] || k;
+
+  function dupFiltered() {
+    const q = $('#dupFilter').value.trim().toLowerCase();
+    const groups = state.dup?.groups || [];
+    if (!q) return groups;
+    return groups.filter((g) =>
+      g.keys.some((k) => k.value.toLowerCase().includes(q)) ||
+      g.records.some((r) => r.path.toLowerCase().includes(q) || Object.values(r.data).some((v) => String(v).toLowerCase().includes(q))));
+  }
+
+  function renderDuplicates() {
+    const d = state.dup;
+    $('#dupResultsSection').classList.remove('hidden');
+    const list = dupFiltered();
+    const fieldLabel = state.dupFields?.find((f) => f.key === d.field)?.label || d.field;
+    const filtered = list.length !== d.groups.length ? ` · ${list.length.toLocaleString()} shown` : '';
+    $('#dupSummary').innerHTML = d.stats.groups
+      ? `<strong>${d.stats.groups.toLocaleString()} duplicate group${d.stats.groups === 1 ? '' : 's'}</strong>
+         <span>${d.stats.files.toLocaleString()} files involved · ${d.stats.scanned.toLocaleString()} PDFs scanned · ${esc(fieldLabel)} · ${fmtMs(d.stats.ms)}${filtered}</span>
+         ${d.stats.unreadable ? `<span class="tag diff" title="PDFs with no readable form text">${ICONS.warn}${d.stats.unreadable} unreadable</span>` : ''}`
+      : `<strong>No duplicates</strong>
+         <span>${d.stats.scanned.toLocaleString()} PDFs scanned · ${esc(fieldLabel)} · ${fmtMs(d.stats.ms)}</span>
+         ${d.stats.unreadable ? `<span class="tag diff" title="PDFs with no readable form text">${ICONS.warn}${d.stats.unreadable} unreadable</span>` : ''}`;
+    $('#dupList').innerHTML = list.length ? '' : `<div class="card list-empty">${d.stats.groups ? 'No duplicate groups match this filter.' : 'Every PDF in this folder is unique by ' + esc(fieldLabel) + '.'}</div>`;
+    state.dupList = list;
+    state.dupShown = 0;
+    showMoreDuplicates();
+  }
+
+  function dupGroupHtml(g, i) {
+    const first = g.records[0].data;
+    const name = [first.givenName, first.surname].filter(Boolean).join(' ') || 'Unknown name';
+    const keys = g.keys.map((k) => `<span class="tag reason" title="${esc(dupKeyLabel(k.key))}">${ICONS.check}${esc(dupKeyLabel(k.key))}: ${esc(k.value)}</span>`).join('');
+    const rows = g.records.map((r, j) => {
+      const d = r.data;
+      const bits = [
+        d.applicationId && `App. ID ${d.applicationId}`,
+        d.passportNo && `Passport ${d.passportNo}`,
+        d.registrationDate && `Registered ${d.registrationDate}`,
+      ].filter(Boolean).join(' · ');
+      return `
+        <div class="dup-item">
+          <div class="dup-item-head">
+            <span class="dup-index">${j + 1}</span>
+            <div class="dup-item-text">
+              <div class="dup-item-name">${esc([d.givenName, d.surname].filter(Boolean).join(' ') || r.name)}</div>
+              <div class="dup-item-meta">${esc(bits)}</div>
+            </div>
+          </div>
+          ${fileRow(r)}
+        </div>`;
+    }).join('');
+    return `
+      <article class="card dup-group">
+        <div class="dup-head">
+          ${avatar(name)}
+          <div class="dup-head-text">
+            <div class="person-name">${esc(name)}</div>
+            <div class="person-meta">Group #${i + 1} · ${g.records.length} files share the same ${g.keys.length === 1 ? esc(dupKeyLabel(g.keys[0].key)) : 'details'}</div>
+          </div>
+          <span class="dup-count">${g.records.length}×</span>
+        </div>
+        <div class="tags dup-keys">${keys}</div>
+        <div class="dup-items">${rows}</div>
+      </article>`;
+  }
+
+  function showMoreDuplicates() {
+    const list = state.dupList || [];
+    const slice = list.slice(state.dupShown, state.dupShown + PAGE);
+    $('#dupList').insertAdjacentHTML('beforeend', slice.map((g, i) => dupGroupHtml(g, state.dupShown + i)).join(''));
+    state.dupShown += slice.length;
+    const rest = list.length - state.dupShown;
+    $('#dupMoreBtn').classList.toggle('hidden', rest <= 0);
+    $('#dupMoreBtn').textContent = `Show ${Math.min(rest, PAGE)} more (${rest} remaining)`;
+  }
+  $('#dupMoreBtn').onclick = showMoreDuplicates;
+  let dupFilterTimer;
+  $('#dupFilter').addEventListener('input', () => {
+    clearTimeout(dupFilterTimer);
+    dupFilterTimer = setTimeout(() => state.dup && renderDuplicates(), 120);
+  });
+
+  $('#dupExportBtn').onclick = () => {
+    if (!state.dup) return;
+    const rows = [['Group', 'Matched On', 'Given Name', 'Surname', 'Passport', 'NID', 'Application ID', 'Phone', 'Email', 'Web Registration Date', 'File']];
+    dupFiltered().forEach((g, i) => {
+      const on = g.keys.map((k) => `${dupKeyLabel(k.key)}: ${k.value}`).join('; ');
+      for (const r of g.records) {
+        const d = r.data;
+        rows.push([i + 1, on, d.givenName, d.surname, d.passportNo, d.nid, d.applicationId, d.phone || d.mobile, d.email, d.registrationDate, r.path]);
+      }
+    });
+    downloadCsv(rows, 'bdg-duplicates');
   };
 
   // ---------- export ----------
