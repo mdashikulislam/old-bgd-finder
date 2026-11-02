@@ -690,32 +690,46 @@ mark { background: color-mix(in srgb, var(--amber) 40%, transparent); color: inh
 .datum.expiring .datum-label { color: color-mix(in srgb, var(--amber) 70%, var(--text)); }
 
 /* ---------- duplicate finder ---------- */
-.dup-group { padding: 20px; display: flex; flex-direction: column; gap: 14px; animation: rise 0.3s ease both; }
+.dup-group { padding: 20px; display: flex; flex-direction: column; gap: 16px; animation: rise 0.3s ease both; }
 .dup-head { display: flex; align-items: center; gap: 12px; }
+.dup-icon {
+  flex: none; width: 42px; height: 42px; border-radius: 12px;
+  display: grid; place-items: center;
+  background: var(--amber-soft); color: color-mix(in srgb, var(--amber) 75%, var(--text));
+}
+.dup-icon svg { width: 20px; height: 20px; }
 .dup-head-text { flex: 1; min-width: 0; }
+.dup-title { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.dup-title-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.dup-title-value { font-family: var(--mono); font-weight: 650; font-size: 15px; letter-spacing: -0.01em; overflow-wrap: anywhere; }
 .dup-count {
   flex: none; height: 30px; padding: 0 12px; border-radius: 999px;
   display: inline-flex; align-items: center;
   background: var(--amber-soft); color: color-mix(in srgb, var(--amber) 70%, var(--text));
   font-weight: 700; font-size: 13px; font-variant-numeric: tabular-nums;
 }
-.dup-keys .tag { height: 26px; font-size: 12px; }
-.dup-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.dup-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
 .dup-item {
   display: flex; flex-direction: column; gap: 10px;
-  padding: 12px; border-radius: 14px;
-  background: color-mix(in srgb, var(--surface-2) 60%, transparent); border: 1px solid var(--border);
+  padding: 14px; border-radius: 14px;
+  background: var(--surface-solid); border: 1px solid var(--border);
   min-width: 0;
 }
-.dup-item-head { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+.dup-item-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .dup-index {
   flex: none; width: 24px; height: 24px; border-radius: 50%;
   display: grid; place-items: center;
   background: var(--primary-soft); color: var(--primary); font-size: 12px; font-weight: 700;
 }
-.dup-item-text { min-width: 0; }
-.dup-item-name { font-weight: 650; font-size: 13.5px; line-height: 1.3; overflow-wrap: anywhere; }
-.dup-item-meta { font-size: 12px; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
+.dup-item-name { font-weight: 700; font-size: 14px; line-height: 1.3; overflow-wrap: anywhere; min-width: 0; }
+.dup-item-name.hit { color: color-mix(in srgb, var(--amber) 75%, var(--text)); }
+.dup-facts { display: flex; flex-direction: column; gap: 3px; }
+.dup-fact { display: flex; gap: 8px; align-items: baseline; font-size: 12px; padding: 2px 6px; margin: 0 -6px; border-radius: 6px; min-width: 0; }
+.dup-fact-label { flex: none; width: 70px; color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.dup-fact-value { font-weight: 600; overflow-wrap: anywhere; min-width: 0; }
+.dup-fact-value.mono { font-family: var(--mono); font-weight: 500; }
+.dup-fact.hit { background: var(--amber-soft); }
+.dup-fact.hit .dup-fact-label, .dup-fact.hit .dup-fact-value { color: color-mix(in srgb, var(--amber) 75%, var(--text)); }
 
 @media (max-width: 1000px) {
   .topbar { flex-wrap: wrap; gap: 10px; }

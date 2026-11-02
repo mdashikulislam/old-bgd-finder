@@ -419,7 +419,7 @@ app.get('/api/duplicates', async (req, res) => {
       for (const k of DUP_DATA_FIELDS) if (rec.data[k]) d[k] = rec.data[k];
       return { path: rec.path, name: rec.name, folder: rec.folder, relFolder: rec.relFolder, data: d };
     };
-    const groups = findDuplicates(readable, field).map((g) => ({ keys: g.keys, records: g.records.map(slim) }));
+    const groups = findDuplicates(readable, field).map((g) => ({ key: g.key, label: g.label, value: g.value, records: g.records.map(slim) }));
 
     send('done', {
       path: dir,
@@ -429,7 +429,7 @@ app.get('/api/duplicates', async (req, res) => {
         readable: readable.length,
         unreadable: recs.length - readable.length,
         groups: groups.length,
-        files: groups.reduce((n, g) => n + g.records.length, 0),
+        files: new Set(groups.flatMap((g) => g.records.map((r) => r.path))).size,
         ms: Date.now() - t0,
       },
       groups,

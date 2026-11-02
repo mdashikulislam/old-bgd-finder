@@ -867,14 +867,12 @@
     };
   }
 
-  const dupKeyLabel = (k) => state.dupKeyLabels?.[k] || k;
-
   function dupFiltered() {
     const q = $('#dupFilter').value.trim().toLowerCase();
     const groups = state.dup?.groups || [];
     if (!q) return groups;
     return groups.filter((g) =>
-      g.keys.some((k) => k.value.toLowerCase().includes(q)) ||
+      g.value.toLowerCase().includes(q) || g.label.toLowerCase().includes(q) ||
       g.records.some((r) => r.path.toLowerCase().includes(q) || Object.values(r.data).some((v) => String(v).toLowerCase().includes(q))));
   }
 
@@ -897,41 +895,48 @@
     showMoreDuplicates();
   }
 
+  // which extracted field each duplicate key reads from
+  const DUP_SOURCE = {
+    passport: ['passportNo'], nid: ['nid'], givenName: ['givenName'], surname: ['surname'],
+    email: ['email'], phone: ['mobile', 'phone'], appId: ['applicationId'],
+  };
+  const DUP_ITEM_FIELDS = [
+    ['passportNo', 'Passport', true], ['nid', 'NID', true], ['applicationId', 'App. ID', true],
+    ['mobile', 'Mobile', true], ['phone', 'Phone', true], ['email', 'Email'], ['registrationDate', 'Registered', true],
+  ];
+
   function dupGroupHtml(g, i) {
-    const first = g.records[0].data;
-    const name = [first.givenName, first.surname].filter(Boolean).join(' ') || 'Unknown name';
-    const keys = g.keys.map((k) => `<span class="tag reason" title="${esc(dupKeyLabel(k.key))}">${ICONS.check}${esc(dupKeyLabel(k.key))}: ${esc(k.value)}</span>`).join('');
-    const rows = g.records.map((r, j) => {
+    const matchKeys = new Set(DUP_SOURCE[g.key] || []);
+    const items = g.records.map((r, j) => {
       const d = r.data;
-      const bits = [
-        d.applicationId && `App. ID ${d.applicationId}`,
-        d.passportNo && `Passport ${d.passportNo}`,
-        d.registrationDate && `Registered ${d.registrationDate}`,
-      ].filter(Boolean).join(' · ');
+      const name = [d.givenName, d.surname].filter(Boolean).join(' ') || r.name;
+      const nameHit = matchKeys.has('givenName') || matchKeys.has('surname');
+      const facts = DUP_ITEM_FIELDS.filter(([k]) => d[k]).map(([k, label, mono]) => `
+          <div class="dup-fact ${matchKeys.has(k) ? 'hit' : ''}">
+            <span class="dup-fact-label">${label}</span>
+            <span class="dup-fact-value ${mono ? 'mono' : ''}">${esc(d[k])}</span>
+          </div>`).join('');
       return `
         <div class="dup-item">
           <div class="dup-item-head">
             <span class="dup-index">${j + 1}</span>
-            <div class="dup-item-text">
-              <div class="dup-item-name">${esc([d.givenName, d.surname].filter(Boolean).join(' ') || r.name)}</div>
-              <div class="dup-item-meta">${esc(bits)}</div>
-            </div>
+            <div class="dup-item-name ${nameHit ? 'hit' : ''}">${esc(name)}</div>
           </div>
+          <div class="dup-facts">${facts}</div>
           ${fileRow(r)}
         </div>`;
     }).join('');
     return `
       <article class="card dup-group">
         <div class="dup-head">
-          ${avatar(name)}
+          <span class="dup-icon">${ICONS.copy}</span>
           <div class="dup-head-text">
-            <div class="person-name">${esc(name)}</div>
-            <div class="person-meta">Group #${i + 1} · ${g.records.length} files share the same ${g.keys.length === 1 ? esc(dupKeyLabel(g.keys[0].key)) : 'details'}</div>
+            <div class="dup-title"><span class="dup-title-label">${esc(g.label)}</span><span class="dup-title-value">${esc(g.value)}</span></div>
+            <div class="person-meta">Group #${i + 1} · ${g.records.length} PDFs have this same ${esc(g.label.toLowerCase())}</div>
           </div>
-          <span class="dup-count">${g.records.length}×</span>
+          <span class="dup-count">${g.records.length} files</span>
         </div>
-        <div class="tags dup-keys">${keys}</div>
-        <div class="dup-items">${rows}</div>
+        <div class="dup-items">${items}</div>
       </article>`;
   }
 
@@ -953,12 +958,11 @@
 
   $('#dupExportBtn').onclick = () => {
     if (!state.dup) return;
-    const rows = [['Group', 'Matched On', 'Given Name', 'Surname', 'Passport', 'NID', 'Application ID', 'Phone', 'Email', 'Web Registration Date', 'File']];
+    const rows = [['Group', 'Matched On', 'Shared Value', 'Given Name', 'Surname', 'Passport', 'NID', 'Application ID', 'Phone', 'Email', 'Web Registration Date', 'File']];
     dupFiltered().forEach((g, i) => {
-      const on = g.keys.map((k) => `${dupKeyLabel(k.key)}: ${k.value}`).join('; ');
       for (const r of g.records) {
         const d = r.data;
-        rows.push([i + 1, on, d.givenName, d.surname, d.passportNo, d.nid, d.applicationId, d.phone || d.mobile, d.email, d.registrationDate, r.path]);
+        rows.push([i + 1, g.label, g.value, d.givenName, d.surname, d.passportNo, d.nid, d.applicationId, d.phone || d.mobile, d.email, d.registrationDate, r.path]);
       }
     });
     downloadCsv(rows, 'bdg-duplicates');

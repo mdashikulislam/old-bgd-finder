@@ -38,7 +38,7 @@ The **Search PDFs** tab looks up one or more values in any folder (sub-folders i
 
 The **Analyzer** tab reads every PDF in one folder (sub-folders included) and lists each applicant's given name, surname, application ID, NID, phone number, email address and web registration date, together with the file's location. The filter box narrows the list, and **Export CSV** downloads what is shown.
 
-The **Duplicate Finder** tab reads every PDF in one folder (sub-folders included) and groups files that belong to the same applicant. Choose what to match on: Passport No., NID / BRN, Given Name, Surname, Email, Phone, Application ID, or **Any field**, which links files that share any of the passport, NID, email, phone or application ID values. Each group lists every copy with its location, and **Export CSV** downloads the groups.
+The **Duplicate Finder** tab reads every PDF in one folder (sub-folders included) and groups files that belong to the same applicant. Choose what to match on: Passport No., NID / BRN, Given Name, Surname, Email, Phone, Application ID, or **Any field**, which checks the passport, NID, email, phone and application ID values. Every shared value gets its own card listing the PDFs that contain it, with the matching value highlighted on each file, so a file can appear under several cards. **Export CSV** downloads the groups.
 
 ## Notes
 
