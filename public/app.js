@@ -936,7 +936,7 @@
           </div>
           <span class="dup-count">${g.records.length} files</span>
         </div>
-        <div class="dup-items">${items}</div>
+        <div class="dup-items cols-${Math.min(g.records.length, 4)}">${items}</div>
       </article>`;
   }
 
